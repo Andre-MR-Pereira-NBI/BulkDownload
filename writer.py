@@ -3,7 +3,7 @@ import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from time import time
 
-dir = './BulkDownload/'
+dir = './DocsExtracted/'
 
 class FileUploadHandler(BaseHTTPRequestHandler):
     def do_POST(self):

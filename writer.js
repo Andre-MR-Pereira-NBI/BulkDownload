@@ -12,7 +12,7 @@ app.post(endpoint, function(req, res) {
     try{
         console.log(req.body)
         console.log(req.headers.Name)
-        var dir = './BulkDownload/';
+        var dir = './DocsExtracted/';
         var namePDF = req.headers.Name;
     
         fs.writeFileSync(dir + namePDF, JSON.stringify(req.body));
