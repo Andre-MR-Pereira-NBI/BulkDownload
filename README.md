@@ -25,8 +25,10 @@ Keep this terminal open while opening a different terminal.
 
 #### Postman
 In Postman app, go to Collections -> ... -> Run Collection:
+
 ![alt text](Assets/ChooseCollection.PNG)
 In the newly opened tab, choose Functional -> Automate runs via CLI. In the tab beneath that pops up (Run on Postman CLI), there are 2 Postman CLI commands that will be necessary to run on the second terminal.
+
 ![alt text](Assets/RunCollectionPostman.PNG)
 Therefore, it is necessary to generate a API Key by pressing the corresponding button. Afterwards, the commands should be in this format:
 >postman login --with-api-key <API_KEY_GENERATED>
