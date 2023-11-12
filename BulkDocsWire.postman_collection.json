@@ -1,0 +1,482 @@
+{
+	"info": {
+		"_postman_id": "1093112b-0cb4-44ef-ab47-8a68eed3ef5b",
+		"name": "BulkDocsWire",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30567990",
+		"_collection_link": "https://andre-mr-pereira-nbi.postman.co/workspace/Andre-MR-Pereira-NBI-Workspace~0c088ba1-ef62-40ae-8909-ffff7fad1c57/collection/30567990-1093112b-0cb4-44ef-ab47-8a68eed3ef5b?action=share&source=collection_link&creator=30567990"
+	},
+	"item": [
+		{
+			"name": "Login to Wire NBI",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"postman.setNextRequest(null)\r",
+							"pm.test(\"User logged in successfully\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    pm.expect(pm.cookies.has('jive.user.loggedIn')).to.be.true;\r",
+							"    postman.setNextRequest()\r",
+							"    pm.collectionVariables.set(\"page_number\", 0);\r",
+							"    pm.collectionVariables.set(\"article_number\", 0);\r",
+							"    pm.collectionVariables.set(\"new_active_page\", true);\r",
+							"    pm.collectionVariables.set(\"doc_chosen\", false);\r",
+							"    //pm.collectionVariables.set(\"PDFs\", null);\r",
+							"    pm.collectionVariables.set(\"last_page\",false);\r",
+							"    pm.collectionVariables.set(\"documentsActive\", JSON.stringify([{}]));\r",
+							"    pm.collectionVariables.set(\"DOCS_SCRAPPED\", 0);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const cookieJar = pm.cookies.jar()\r",
+							"cookieJar.clear(pm.request.url, function (error) {\r",
+							"    if(error != null)\r",
+							"        console.log(error);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "https://thewire.nbi.ie/cs_login?username=<NBI_EMAIL>&password=<PASSWORD>",
+					"protocol": "https",
+					"host": [
+						"thewire",
+						"nbi",
+						"ie"
+					],
+					"path": [
+						"cs_login"
+					],
+					"query": [
+						{
+							"key": "username",
+							"value": "<NBI_EMAIL>",
+							"description": "Type your email on the Value column"
+						},
+						{
+							"key": "password",
+							"value": "<PASSWORD>",
+							"description": "Type your password on the Value column"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Access docs hub",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if(Boolean(pm.collectionVariables.get(\"new_active_page\"))){\r",
+							"    pm.collectionVariables.set(\"new_active_page\",false);\r",
+							"    var article_links = [];\r",
+							"    JSON.parse(pm.response.text()).items.each( (entry,index) => {\r",
+							"        article_links.push({\"id\":index, \"link\": entry.link});\r",
+							"    });\r",
+							"    console.log(\"Documents of page \" + parseInt(pm.collectionVariables.get(\"page_number\"))/20 + \": \" + JSON.stringify(article_links));\r",
+							"    console.log(article_links == null);\r",
+							"    console.log(article_links.length === 0);\r",
+							"    console.log(article_links == null || article_links.length === 0);\r",
+							"    if (article_links == null || article_links.length === 0) {\r",
+							"        pm.collectionVariables.set(\"last_page\",true);\r",
+							"    }\r",
+							"    pm.collectionVariables.set(\"documentsActive\",JSON.stringify(article_links));\r",
+							"}\r",
+							"\r",
+							"if(JSON.parse(pm.collectionVariables.get(\"documentsActive\")).count() === 0){\r",
+							"    postman.setNextRequest(\"Access docs hub\")\r",
+							"}else{\r",
+							"    while(!Boolean(pm.collectionVariables.get(\"doc_chosen\")) && pm.collectionVariables.get(\"article_number\") < pm.collectionVariables.get(\"MAX_DOCUMENTS_PER_PAGE\") && pm.collectionVariables.get(\"article_number\") <= JSON.parse(pm.collectionVariables.get(\"documentsActive\")).count()){\r",
+							"        console.log(\"Document iteration: \" + pm.collectionVariables.get(\"article_number\"));\r",
+							"        let active_article_link = JSON.parse(pm.collectionVariables.get(\"documentsActive\"))[pm.collectionVariables.get(\"article_number\")];\r",
+							"        if (active_article_link != null && (active_article_link.link.startsWith(\"/docs/\") || active_article_link.link.startsWith(\"/community/\"))) {\r",
+							"            pm.collectionVariables.set(\"doc_chosen\", true);\r",
+							"            pm.collectionVariables.set(\"doc_page_link\", active_article_link.link);\r",
+							"        }\r",
+							"        if(!Boolean(pm.collectionVariables.get(\"doc_chosen\"))){\r",
+							"            pm.collectionVariables.set(\"article_number\",parseInt(pm.collectionVariables.get(\"article_number\")) + 1);\r",
+							"        }\r",
+							"    }\r",
+							"}\r",
+							"\r",
+							"if(Boolean(pm.collectionVariables.get(\"last_page\"))){\r",
+							"    postman.setNextRequest(\"ZIP docs\");\r",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let article_number = pm.collectionVariables.get(\"article_number\");\r",
+							"\r",
+							"if(article_number > pm.collectionVariables.get(\"MAX_DOCUMENTS_PER_PAGE\") || article_number >= JSON.parse(pm.collectionVariables.get(\"documentsActive\")).count()){\r",
+							"    pm.collectionVariables.set(\"DOCS_SCRAPPED\", parseInt(pm.collectionVariables.get(\"DOCS_SCRAPPED\")) + parseInt(JSON.parse(pm.collectionVariables.get(\"documentsActive\")).count()));\r",
+							"    pm.collectionVariables.set(\"page_number\", parseInt(pm.collectionVariables.get(\"page_number\")) + parseInt(pm.collectionVariables.get(\"JUMP_PAGES_OFFSET\")));\r",
+							"    pm.collectionVariables.set(\"article_number\", 0);\r",
+							"    pm.collectionVariables.set(\"new_active_page\", true);\r",
+							"    pm.collectionVariables.set(\"doc_chosen\", false);\r",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://thewire.nbi.ie/__services/v2/rest/content?filterGroupID=placeContent&start={{page_number}}&numResults={{MAX_DOCUMENTS_PER_PAGE}}&containerType=14&containerID=2014&token=MTY5OTc0NDU3MDE1OHwyMjB8W0JANWJhZTkyOGY=&filterID=contentstatus[published]",
+					"protocol": "https",
+					"host": [
+						"thewire",
+						"nbi",
+						"ie"
+					],
+					"path": [
+						"__services",
+						"v2",
+						"rest",
+						"content"
+					],
+					"query": [
+						{
+							"key": "filterGroupID",
+							"value": "placeContent"
+						},
+						{
+							"key": "start",
+							"value": "{{page_number}}"
+						},
+						{
+							"key": "numResults",
+							"value": "{{MAX_DOCUMENTS_PER_PAGE}}"
+						},
+						{
+							"key": "containerType",
+							"value": "14"
+						},
+						{
+							"key": "containerID",
+							"value": "2014"
+						},
+						{
+							"key": "token",
+							"value": "MTY5OTc0NDU3MDE1OHwyMjB8W0JANWJhZTkyOGY="
+						},
+						{
+							"key": "filterID",
+							"value": "contentstatus[published]"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get a page with a Doc",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const $ = cheerio.load(pm.response.text());\r",
+							"\r",
+							"let invalid_chars = [\"–\",\"č\"]\r",
+							"\r",
+							"let target_pdf = $('div.j-attachment-info.clearfix').find('a')\r",
+							"let target_img = $('img.image-1.jive-image.j-img-original')\r",
+							"console.log(\"PDF?\")\r",
+							"console.log(target_pdf.length === 1)\r",
+							"console.log(\"IMG?\")\r",
+							"console.log(target_img.length === 1)\r",
+							"if(target_pdf.length === 1){\r",
+							"    let pdf_url = target_pdf.attr('href')\r",
+							"    let trimmed_url = pdf_url.replace(\"https://thewire.nbi.ie\", \"\");\r",
+							"    let pdf_name = target_pdf.text()\r",
+							"    let fileName = decodeURI(pdf_name);\r",
+							"    invalid_chars.forEach(invalid_char => {\r",
+							"        fileName = decodeURI(fileName).replace(invalid_char, \"_\");\r",
+							"    }) \r",
+							"    pm.collectionVariables.set(\"DOC_URL\", trimmed_url);\r",
+							"    pm.collectionVariables.set(\"DOC_NAME\", fileName);\r",
+							"}else if(target_img.length === 1){\r",
+							"    let img_url = target_img.attr('src');\r",
+							"    let trimmed_url = img_url.replace(\"https://thewire.nbi.ie\", \"\");\r",
+							"    let img_name = img_url.split(\"/\").pop();\r",
+							"    let fileName = decodeURI(img_name);\r",
+							"    invalid_chars.forEach(invalid_char => {\r",
+							"        fileName = decodeURI(fileName).replace(invalid_char, \"_\");\r",
+							"    }) \r",
+							"    console.log(\"Image URL: \" + img_url)\r",
+							"    console.log(\"Image name: \" + fileName)\r",
+							"    pm.collectionVariables.set(\"DOC_URL\", trimmed_url);\r",
+							"    pm.collectionVariables.set(\"DOC_NAME\", fileName); \r",
+							"}else{\r",
+							"    postman.setNextRequest(\"Access docs hub\")\r",
+							"}\r",
+							"\r",
+							"pm.collectionVariables.set(\"doc_chosen\", false);\r",
+							"pm.collectionVariables.set(\"article_number\",parseInt(pm.collectionVariables.get(\"article_number\")) + 1);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "User-Agent",
+						"value": " Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": " text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Language",
+						"value": " en-US,en;q=0.5",
+						"type": "text"
+					},
+					{
+						"key": "Accept-Encoding",
+						"value": " gzip, deflate, br",
+						"type": "text"
+					},
+					{
+						"key": "DNT",
+						"value": " 1",
+						"type": "text"
+					},
+					{
+						"key": "Connection",
+						"value": " keep-alive",
+						"type": "text"
+					},
+					{
+						"key": "Referer",
+						"value": " https://thewire.nbi.ie/community/hr/content",
+						"type": "text"
+					},
+					{
+						"key": "Upgrade-Insecure-Requests",
+						"value": " 1",
+						"type": "text"
+					},
+					{
+						"key": "Sec-Fetch-Dest",
+						"value": " document",
+						"type": "text"
+					},
+					{
+						"key": "Sec-Fetch-Mode",
+						"value": " navigate",
+						"type": "text"
+					},
+					{
+						"key": "Sec-Fetch-Site",
+						"value": " same-origin",
+						"type": "text"
+					},
+					{
+						"key": "Sec-Fetch-User",
+						"value": " ?1",
+						"type": "text"
+					},
+					{
+						"key": "TE",
+						"value": " trailers",
+						"type": "text"
+					},
+					{
+						"key": "Cookie",
+						"value": " jive.login.type=form; remember-me=YW5kcmUucGVyZWlyYUBuYmkuaWU6MTcwMDc4MTg2MzI1OTowZDI5MDc5NWIxZmE3MDY3MTE2MDQ1ZGQ0NTU0MTA1NQ; INGRESSCOOKIE=1699437183.762.51.118441; jive.login.ts=1699437182781; jive.user.loggedIn=true; jive.server.info=serverName=thewire.nbi.ie.i.jiveon.com:serverPort=443:contextPath=:localName=webapp-deploy-57b5d4bd67-dbb2j:localPort=9443:localAddr=172.16.19.31; jive.security.context=eyJraWQiOiJkN2E1MTM4OC1iYzBlLTQxMWMtYTdlZC03ZTgwNTlkYzdhMmMiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJKaXZlIiwiYXVkIjoiYWNjZXNzX3Rva2VuIiwiaWF0IjoxNjk5NDM3NTM2LCJqdGkiOiJwX0dxUHdCWGd2SGhPdnlSVU4yNEdRIiwibmJmIjoxNjk5NDM3NDE2LCJzdWIiOiJqaXZlLWF1dGhlbnRpY2F0aW9uIiwidGVuYW50SWQiOiIwYzRkN2RlYS03M2MyLTQ3YjAtODkzMS03MzFlN2ZhOWZmYjgiLCJ1c2VySWQiOjUxMjEsInR5cCI6IkpXVCIsImF1dGhfdGltZSI6MTY5OTQzNzUzNiwiZXhwIjoxNjk5NjEwMzM2LCJpYXRUVEwiOjE2OTk2MTAzMzZ9.l9A4fq6NdIPbCgVhNUzHu2F7E480qb-hnCEJIMivK8m5KQoSkJmrawwAUo8n_lyFpj-VVlyaC1BPuTSkd47qgFY--0iLnEIDiwMUa-TBSpAN5SFINoMkT-cLxiUpOcgcFzNHDVAZPa4CVZQASk945-AucqCJAPYwWSHc6v6L2Q4oHjmMBQvh6dPnfhpNxIUyq1mlvIcAEtxVuIpeabrfvDbFqLRF2n-Q54lOpm4h6dKlxHFHMdOs_oqFuSZezhQjHcUpqcdfAR-XmAV0BsXyvjXDPRjorjTaICbci-tG46BK3RcUAJck35mVsN8TyG5TsUwEE8_JjIEisU3LUkpAsQ; jive.security.refresh_token=eyJraWQiOiJkN2E1MTM4OC1iYzBlLTQxMWMtYTdlZC03ZTgwNTlkYzdhMmMiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJKaXZlIiwiYXVkIjoicmVmcmVzaF90b2tlbiIsImlhdCI6MTY5OTQzNzUzNiwianRpIjoiZmRPeFFSd0xHa1NRNHVvVER0SmpwUSIsIm5iZiI6MTY5OTQzNzQxNiwic3ViIjoiaml2ZS1hdXRoZW50aWNhdGlvbiIsInRlbmFudElkIjoiMGM0ZDdkZWEtNzNjMi00N2IwLTg5MzEtNzMxZTdmYTlmZmI4IiwidXNlcklkIjo1MTIxLCJ0eXAiOiJKV1QiLCJhdXRoX3RpbWUiOjE2OTk0Mzc1MzYsImV4cCI6MTY5OTYxMDMzNiwiaWF0VFRMIjoxNjk5NjEwMzM2fQ.jhXgvYZMEvyjO5gEs769ajdV9lLZ7YFD5QRZaMhTXB_iUglBMFvFuN002FbXfVGWpReDL7NsUSyqI2dzxFXG7fbJ_l1q0EsQ5fGIbsONP_QSl5wIWdc6Mn8NhFsSdXis6UmUnv7JohgniHFB930gopgCz8ULxk5klJgg1XG5U7vrnSASSCENl7eL5P1q9Hfcds39SkyRUE8aLFIbOKV4ls0Cvm2ZJPVWz05LVvzjUfvn2eczQWOr6zjUnGf8Urf1aIT5qmZmnu_T49Hqjt-jBqF0eJpjdWAhxiYv-R0IxP-KkqWCyyCylBzVf5UbHAdH131PIJyqL86n-yIFCTJeNg; X-JCAPI-Token=UcfuQ3xB; jive.loginEventFired=true; containerSecurityToken=\"default:J9b3cvoGo6Z7wmaHjns_WROA_Q1Gv1BP7f_DB3JAk89FhM_e_MyanN00KNRonnQA4giidghUm5T_cGxTNSaQea7BxHg^#3600^#false^#1699440787096\"; _csrf=p5Q0VQZINRkJMTkrmvKVDx5L",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://thewire.nbi.ie{{doc_page_link}}",
+					"protocol": "https",
+					"host": [
+						"thewire",
+						"nbi",
+						"ie{{doc_page_link}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Download Doc",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.sendRequest({\r",
+							"    url: 'http://localhost:3000/writePDF',\r",
+							"    method: 'POST',\r",
+							"    header: {\r",
+							"        'Content-Type': 'application/pdf',\r",
+							"        'Name': pm.collectionVariables.get(\"DOC_NAME\")\r",
+							"    },\r",
+							"    encoding: 'binary',\r",
+							"    body: {\r",
+							"        mode: 'raw',\r",
+							"        raw: pm.response.stream.toString('base64')\r",
+							"    }\r",
+							"}, function (err, res) {\r",
+							"    pm.test(\"File \" + pm.collectionVariables.get(\"DOC_NAME\") + \" downloaded successfully\", function () {\r",
+							"        pm.expect(res).to.have.status(201);\r",
+							"        postman.setNextRequest(\"Access docs hub\")\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://thewire.nbi.ie{{DOC_URL}}",
+					"protocol": "https",
+					"host": [
+						"thewire",
+						"nbi",
+						"ie{{DOC_URL}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ZIP docs",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Zip \" + pm.collectionVariables.get(\"DOCS_SCRAPPED\") + \" Files\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    postman.setNextRequest(null)\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/ZipDir",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"ZipDir"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "page_number",
+			"value": "0"
+		},
+		{
+			"key": "doc_page_link",
+			"value": ""
+		},
+		{
+			"key": "article_number",
+			"value": "0"
+		},
+		{
+			"key": "MAX_DOCUMENTS_PER_PAGE",
+			"value": "20",
+			"type": "string"
+		},
+		{
+			"key": "JUMP_PAGES_OFFSET",
+			"value": "20",
+			"type": "string"
+		},
+		{
+			"key": "new_active_page",
+			"value": "true"
+		},
+		{
+			"key": "doc_chosen",
+			"value": "false"
+		},
+		{
+			"key": "documentsActive",
+			"value": ""
+		},
+		{
+			"key": "last_page",
+			"value": "false"
+		},
+		{
+			"key": "DOC_URL",
+			"value": ""
+		},
+		{
+			"key": "DOC_NAME",
+			"value": ""
+		},
+		{
+			"key": "DOCS_SCRAPPED",
+			"value": "0"
+		}
+	]
+}
